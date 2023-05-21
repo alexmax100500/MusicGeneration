@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>HTML MIDI Player Example</title>
+    <!-- Include the html-midi-player library using a script tag -->
+  <script src="https://cdn.jsdelivr.net/npm/web-midi-player@latest/index.js"></script>
+  <style>
+    html-midi-player {
+  display: block;
+  width: inherit;
+  margin: 4px;
+  margin-bottom: 0;
+}
+  </style>
+  </head>
+  <body>
+    <h1>HTML MIDI Player Example</h1>
+    <!-- Create an input tag for the user to select a MIDI file -->
+    <input type="file" id="midi-file-input">
+    <br><br>
+    <!-- Create an html-midi-player element with an ID for later reference -->
+    <html-midi-player id="player" visualizer="myVisualizer" src="https://magenta.github.io/magenta-js/music/demos/melody.mid"></html-midi-player>
+    <midi-visualizer type="piano-roll" id="myVisualizer"></midi-visualizer>
+    <br><br>
+    <!-- Create buttons for playing, pausing, and stopping the midi file -->
+    <button onclick="document.getElementById('player').play()">Play</button>
+    <button onclick="document.getElementById('player').pause()">Pause</button>
+    <button onclick="document.getElementById('player').stop()">Stop</button>
+    <br><br>
+    <script>
+      // Wait for the DOM to load
+      window.addEventListener('DOMContentLoaded', () => {
+        // Get the midi-file-input element
+        const fileInput = document.getElementById('midi-file-input');
+
+        // Add an event listener to the file input element
+        fileInput.addEventListener('change', () => {
+          // Get the selected file
+          const file = fileInput.files[0];
+
+          // Create a URL for the selected file
+          const fileUrl = URL.createObjectURL(file);
+
+          // Set the source of the html-midi-player element to the file URL
+          document.getElementById('player').src = fileUrl;
+        });
+      });
+    </script>
+  </body>
+</html>

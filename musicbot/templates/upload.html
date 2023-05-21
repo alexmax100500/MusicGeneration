@@ -1,0 +1,79 @@
+<!-- <script src=" https://cdn.jsdelivr.net/npm/html-midi-player@1.5.0/dist/midi-player.min.js "></script> -->
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.58,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.4.0, "></script> -->
+
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.58/Tone.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/1.2.8/tf.min.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html-midi-player/1.5.0/midi-player.min.js" integrity="sha512-8yYAfrtBZmm0FQ96ypFFdqvb+lAivEYNRKdDpz2oMHTj0uZDLc1W63tn/bZQeyzsVUqu7BTBGn1elxbgzX0hUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html-midi-player/1.5.0/esm/index.js"
+        integrity="sha512-yZiSbm1P70nbZm9os3N0acMdHyo97/TdaLPWzs82FXwVcNCiXcYAM0hN9Bhwyh7u5MTASc3RTmrYF5WJlGTcmA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@magenta/music@2.0.4"></script> -->
+</head>
+
+<body>
+    <div>
+        <form action="uploadFile" method="POST" enctype="multipart/form-data">
+            <!-- <input type="file"> -->
+            {{form}}
+            <input type="submit" value="submit">
+        </form>
+    </div>
+    <div>
+        <input type="file" id="midiFileInput">
+        <button id="loadMidiButton">Load MIDI file</button>
+        <br>
+        <midi-visualizer type="piano-roll" id="myStaffVisualizer"
+            src="https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid">
+        </midi-visualizer>
+        <midi-player src="https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid"
+            sound-font id="mainPlayer" vizualizer="myStaffVisualizer"></midi-player>
+        <br>
+        <!-- <visualizer type="staff" id="myStaffVisualizer" -->
+            <!-- src="https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid"></visualizer> -->
+        <script
+            src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.58,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0"></script>
+            <script>
+      // Wait for the DOM to load
+      window.addEventListener('DOMContentLoaded', () => {
+        // Get the midi-file-input element
+        const fileInput = document.getElementById('midiFileInput');
+
+        // Add an event listener to the file input element
+        fileInput.addEventListener('change', () => {
+          // Get the selected file
+          const file = fileInput.files[0];
+
+          // Create a URL for the selected file
+          const fileUrl = URL.createObjectURL(file);
+
+          // Set the source of the html-midi-player element to the file URL
+          document.getElementById('mainPlayer').src = fileUrl;
+          document.getElementById('myStaffVisualizer').src=fileUrl;
+        });
+      });
+    </script>
+        <!-- <script>
+            document.getElementById("loadMidiButton").addEventListener("click", function () {
+                var inputFile = document.getElementById("midiFileInput");
+                if (inputFile.files && inputFile.files[0]) {
+                    blobToNoteSequence(inputFile.files[0])
+                        .then((noteSequence) => {
+                            document.getElementById("mainPlayer").noteSequence = noteSequence;
+                            document.getElementById("mainVisualizer").noteSequence = noteSequence;
+                        })
+                        .catch((error) => {
+                            alert("Failed to load MIDI file.");
+                            console.error(error);
+                        });
+                }
+            });
+        </script> -->
+    </div>
+</body>
+
+</html>
