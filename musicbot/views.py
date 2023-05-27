@@ -96,16 +96,14 @@ def getAudio(request):
     pitch_temp = 0.8  # randomness of melody
     tempo_temp = 0.8  # randomness or rhythm
     top_k = 40
-    predict_nw, full = learn.predict_nw(
+    predict_nw= learn.predict_nw(
         empty_melody,
         temperatures=(pitch_temp, tempo_temp),
         top_k=top_k,
         top_p=0.5,
         n_words=200,
-    )
-    midi_out = pathlib.Path(predict_nw.to_stream(bpm=120).write("midi", file_location))
-    config = multitask_config()
-    dict = {"a": 1}
+    )   
+    pathlib.Path(predict_nw.to_stream(bpm=120).write("midi", file_location))
     try:
         with open(file_location, "rb") as f:
             file_data = f.read()

@@ -26,6 +26,7 @@
     <div id="viz">
         <input type="file" id="midiFileInput">
         <input type="number" id="operationCode">
+        <input type="number" id="rowNumber">
         <button id="loadMidiButton">Request MIDI</button>
         <button id="downloadFile" onclick="downloadFile()">Download MIDI</button>
         <button id="donwloadWAV" onclick="downloadWAV()">Download WAV</button>
@@ -39,11 +40,62 @@
         <script
             src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.58,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0"></script>
         <script>
-            var globSequences;
+            var globSequences = new Map();
             var globSingleSequence;
             var player = document.getElementById('midiPlayer')
-            function donwloadWAV(){
-                playeres = core.Players()
+            var amount = 0;
+            function removeDeleteButton(i) {
+                button = document.getElementById(`removeButton${i}`)
+                button.parentElement.removeChild(button)
+            }
+            function appendVizualizer(noteSequence) {
+                amount++;
+                function addDeleteButton(amount) {
+                    button = document.createElement('button')
+                    button.id = `removeButton${amount}`
+                    button.innerHTML = "удалить"
+                    button.onclick = function () { dropRow(amount) }
+                    visualizer = document.getElementById(`visual${amount}`)
+                    visualizer.after(button)
+                }
+                addToGlobSequences(amount, noteSequence)
+                visualizer = document.createElement('midi-visualizer');
+                vizContainer = document.getElementById('viz');
+                visualizer.id = `visual${amount}`;
+                visualizer.type = 'staff'
+                visualizer.noteSequence = noteSequence;
+                vizContainer.appendChild(visualizer);
+                addDeleteButton(amount)
+            }
+            function addToGlobSequences(key, noteSequence) {
+                globSequences.set(key, noteSequence)
+            }
+            function addToGlobSingleSequence(noteSequence) {
+                if (typeof globSingleSequence !== 'undefined') {
+                    globSingleSequence.notes = globSingleSequence.notes.concat(noteSequence.notes)
+                }
+                else {
+                    globSingleSequence = core.sequences.clone(noteSequence)
+                }
+            }
+            function restoreGlobSingleSequence() {
+                let isSet = false;
+                for (let seq of globSequences.values()) {
+                    if (isSet) {
+                        globSingleSequence.notes = globSingleSequence.notes.concat(seq.notes)
+                    }
+                    else {
+                        globSingleSequence = core.sequences.clone(seq)
+                        isSet = true;
+                    }
+                }
+            }
+            function updatePlayer() {
+                player.noteSequence = globSingleSequence
+            }
+            function dropVizualizer(i) {
+                visualizer = document.getElementById(`visual${i}`)
+                visualizer.parentNode.removeChild(visualizer)
             }
             function downloadFile() {
                 file = getMidiFromNoteSequence(globSingleSequence)
@@ -56,39 +108,41 @@
                     URL.revokeObjectURL(url);
                 }, 0);
             }
-            function getMidiFromNoteSequence(noteSequence) {
-                noteSequence.controlChanges = globSingleSequence.controlChanges
-                seq = core.sequenceProtoToMidi(noteSequence)
+            async function getMidiFromNoteSequence(noteSequence) {
+                // noteSequence.controlChanges = globSingleSequence.controlChanges
+                seq = await core.sequenceProtoToMidi(noteSequence)
                 file = new Blob([seq], { type: 'audio/midi' })
                 return file
             }
-            function removeRow(id) {
-                console.log("removing " + id)
+            function dropRow(i) {
+                console.log("removing " + i)
+                dropVizualizer(i)
+                removeDeleteButton(i)
+                removeNoteSequence(i)
+                restoreGlobSingleSequence()
+                updatePlayer()
             }
-            async function getRandom(){
-                try{
-                        response = await fetch('http://127.0.0.1:8080/musicbot/getAudio', {
-                            method: 'GET',
-                            // headers: {
-                            //     'Content-Type': 'multipart/form-data'
-                            // }
-                        });
-                        
-                        blob = await response.blob();
-                        newSequence = await core.blobToNoteSequence(blob)
-                        globSequences.push(newSequence)
-                        visualizer = document.createElement('midi-visualizer');
-                        vizContainer = document.getElementById('viz');
-                        visualizer.id = 'mainPlayerN';
-                        visualizer.type = 'staff'
-                        visualizer.noteSequence = newSequence;
-                        vizContainer.appendChild(visualizer);
-                        globSingleSequence.notes = globSingleSequence.notes.concat(newSequence.notes)
-                        player.noteSequence = globSingleSequence
+            function removeNoteSequence(key) {
+                globSequences.delete(key)
+            }
+            async function getRandom() {
+                try {
+                    response = await fetch('http://127.0.0.1:8080/musicbot/getAudio', {
+                        method: 'GET',
+                        // headers: {
+                        //     'Content-Type': 'multipart/form-data'
+                        // }
+                    });
+
+                    blob = await response.blob();
+                    newSequence = await core.blobToNoteSequence(blob)
+                    appendVizualizer(newSequence)
+                    addToGlobSingleSequence(newSequence)
+                    updatePlayer()
                 }
-                    catch (error) {
-                        console.error('Upload error:', error);
-                    }
+                catch (error) {
+                    console.error('Upload error:', error);
+                }
             }
             // Wait for the DOM to load
             window.addEventListener('DOMContentLoaded', () => {
@@ -114,19 +168,9 @@
                         });
                         blob = await response.blob();
                         newSequence = await core.blobToNoteSequence(blob)
-                        globSequences.push(newSequence)
-                        visualizer = document.createElement('midi-visualizer');
-                        vizContainer = document.getElementById('viz');
-                        visualizer.id = 'mainPlayerN';
-                        visualizer.type = 'staff'
-                        visualizer.noteSequence = newSequence;
-                        vizContainer.appendChild(visualizer);
-                        globSingleSequence.notes = globSingleSequence.notes.concat(newSequence.notes)
-                        player.noteSequence = globSingleSequence
-                        button = document.createElement('button')
-                        button.id = 'button' + id
-                        button.onclick = removeRow(id)
-                        vizContainer.appendChild(button)
+                        appendVizualizer(newSequence)
+                        addToGlobSingleSequence(newSequence)
+                        updatePlayer()
                     }
                     catch (error) {
                         console.error('Upload error:', error);
@@ -140,18 +184,10 @@
                     // Create a URL for the selected file
                     var fileUrl = URL.createObjectURL(file);
 
-                    // Set the source of the html-midi-player element to the file URL
-                    // document.getElementById('mainPlayer').src = fileUrl;
-                    // document.getElementById('myStaffVisualizer').src = fileUrl;
-                    // document.getElementById('myStaffVisualizer2').src = fileUrl;
-                    // var mm = require('@magenta/music');
-                    // var fs = require('fs');
                     core.urlToNoteSequence(fileUrl).then(function (result) {
-                        globSingleSequence = result
                         console.log(result);
-                        document.getElementById('midiPlayer').noteSequence = result
-                        const instrumentIds = new Set(Array.from(result.notes, note => note.instrument));
-                        const noteArrays = Array.from(instrumentIds, id => result.notes.filter(note => note.instrument === id));
+                        const instrumentIds = new Set(Array.from(result.notes, note => note.program));
+                        const noteArrays = Array.from(instrumentIds, id => result.notes.filter(note => note.program === id));
                         const sequences = noteArrays.map(notes => {
                             return {
                                 notes: notes,
@@ -161,86 +197,18 @@
                         });
                         return sequences;
                     }).then(function (sequences) {
-                        globSequences = sequences;
+                        console.log("fileSequenceLength " + sequences.length)
                         // console.log(sequences);
-                        const maxVisualizers = 5; // maximum number of visualizer elements
                         for (let i = 0; i < sequences.length; i++) {
                             const seq = sequences[i];
-                            const id = `mainPlayer${i}`;
-                            let visualizer = document.getElementById(id);
-                            const elementsToRemove = document.querySelectorAll("div[id*='mainPlayer']");
-                            elementsToRemove.forEach(element => element.remove());
-                            if (!visualizer) {
-                                // create visualizer element if it doesn't exist
-                                visualizer = document.createElement('midi-visualizer');
-                                visualizer.id = id;
-                                visualizer.type = 'staff'
-                            }
-                            visualizer.noteSequence = seq;
-                            let vizContainer = document.getElementById('viz');
-                            if (!vizContainer) {
-                                vizContainer = document.createElement('div');
-                                vizContainer.id = 'viz';
-                                document.body.appendChild(vizContainer);
-                            }
-                            visualizer.id = id;
-                            vizContainer.appendChild(visualizer);
-                            button = document.createElement('button')
-                            button.id = 'button' + id
-                            button.onclick = removeRow(id)
-                            vizContainer.appendChild(button)
-                            // if (i >= maxVisualizers) {
-                            // remove any visualizer elements beyond the maximum
-                            // document.body.removeChild(visualizer);
-                            // }
+                            appendVizualizer(seq)
                         }
-
-                        visualizers = document.querySelectorAll('midi-visualizer');
-                        console.log(visualizers)
-                        // Add a listener to the scroll event for each visualizer
-                        visualizers.forEach(visualizer => {
-                            visualizer.addEventListener('scroll', () => {
-                                // Get the current scroll position of the active visualizer
-                                const scrollPosition = visualizer.scrollLeft;
-
-                                // Loop through each visualizer except the active one and set its scrollLeft property to match the active visualizer
-                                visualizers.forEach(v => {
-                                    if (v !== visualizer) {
-                                        v.scrollLeft = scrollPosition;
-                                    }
-                                });
-                            });
-                        });
+                        restoreGlobSingleSequence()
+                        updatePlayer()
                     });
-                    // var filteredSequence =  sequence.notes.filter((note) => note.program === 0);
-                    // document.getElementById('mainPlayer').noteSequence = filteredSequence;
-                    // document.getElementById('myStaffVisualizer').noteSequence = filteredSequence;
-                    // document.getElementById('myStaffVisualizer2').noteSequence = filteredSequence;
                 });
             });
         </script>
-        <script>
-            // const mm = require('@magenta/music');
-            // const fs = require('fs');
-            // const filteredSequence = mm.sequences.quantizeNoteSequence(sequence, 4).filter((note) => note.program === 0);
-
-        </script>
-        <!-- <script>
-            document.getElementById("loadMidiButton").addEventListener("click", function () {
-                var inputFile = document.getElementById("midiFileInput");
-                if (inputFile.files && inputFile.files[0]) {
-                    blobToNoteSequence(inputFile.files[0])
-                        .then((noteSequence) => {
-                            document.getElementById("mainPlayer").noteSequence = noteSequence;
-                            document.getElementById("mainVisualizer").noteSequence = noteSequence;
-                        })
-                        .catch((error) => {
-                            alert("Failed to load MIDI file.");
-                            console.error(error);
-                        });
-                }
-            });
-        </script> -->
     </div>
 </body>
 
