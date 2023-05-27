@@ -52,7 +52,11 @@ def handle_uploaded_file(f):
 
 @api_view(["POST"])
 def test(request):
-    # print(request.FILES)
+    print("FILES::")
+    print(request.FILES)
+    print("POST::")
+    print(request.POST)
+    
     midi_file = request.FILES["file"]
     # operation_code=request.POST['operation_code']
     handle_uploaded_file(midi_file)
@@ -96,7 +100,7 @@ def getAudio(request):
     pitch_temp = 0.8  # randomness of melody
     tempo_temp = 0.8  # randomness or rhythm
     top_k = 40
-    predict_nw= learn.predict_nw(
+    predict_nw, full= learn.predict_nw(
         empty_melody,
         temperatures=(pitch_temp, tempo_temp),
         top_k=top_k,
