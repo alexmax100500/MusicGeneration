@@ -3,7 +3,8 @@
 <html>
 
 <head>
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous">
     <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.58,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.4.0, "></script> -->
 
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.58/Tone.js"></script> -->
@@ -23,14 +24,34 @@
             <input type="submit" value="submit">
         </form> -->
     </div>
-    <div id="viz">
-        <input type="file" id="midiFileInput">
-        <input type="number" id="operationCode">
-        <input type="number" id="rowNumber">
-        <button id="loadMidiButton">Request MIDI</button>
-        <button id="downloadFile" onclick="downloadFile()">Download MIDI</button>
-        <button id="donwloadWAV" onclick="downloadWAV()">Download WAV</button>
-        <button id="getRandom" onclick="getRandom()">Download random</button>
+    <div id="viz" border-radius="1px">
+        <div>
+            <label>Загрузить файл</label>
+            <input type="file" id="midiFileInput" class="form-control-sm">
+            <button onclick="downloadFile()" class="btn btn-primary">Скачать файл</button>
+        </div>
+        <div>
+            Режим
+            <select id="operationCodeContainer" class="" name="operationCode">
+                <option value="0">
+                    Подобрать аккомпанемент</option>
+                <option value="1">Подобрать мелодию</option>
+            </select>
+        </div>
+        <!-- <input type="number" id="operationCode" > -->
+        <div>
+            <label>Вариативность высоты</label>
+            <input id="pitch_tempContainer" type="number" step="0.1" value="1">
+        </div>
+        <div>
+            <label>Вариативность ритма</label>
+            <input id="tempo_tempContainer" type="number" step="0.1" value="1">
+        </div>
+        <div>
+            <label>Количество элементов</label>
+            <input id="n_wordsContainer" type="number" value="100" step="1">
+        </div>
+        <button id="getRandom" class="btn btn-light" onclick="getRandom()">Download random</button>
         <br>
         <midi-player src="https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid" sound-font
             id="midiPlayer" vizualizer="myStaffVisualizer myStaffVisualizer2"></midi-player>
@@ -50,11 +71,11 @@
             }
             function appendVizualizer(noteSequence) {
                 amount++;
-                function addRequestMIDIButton(amount){
+                function addRequestMIDIButton(amount) {
                     button = document.createElement('button')
-                    button.id = `resuestMIDI${amount}`
+                    button.id = `requestMIDI${amount}`
                     button.innerHTML = "дополнить"
-                    button.onclick = function () { dropRow(amount) }
+                    button.onclick = function () { requestMIDI(amount) }
                     visualizer = document.getElementById(`visual${amount}`)
                     visualizer.after(button)
                 }
@@ -74,6 +95,7 @@
                 visualizer.noteSequence = noteSequence;
                 vizContainer.appendChild(visualizer);
                 addDeleteButton(amount)
+                addRequestMIDIButton(amount)
             }
             function addToGlobSequences(key, noteSequence) {
                 globSequences.set(key, noteSequence)
@@ -104,9 +126,11 @@
             function dropVizualizer(i) {
                 visualizer = document.getElementById(`visual${i}`)
                 visualizer.parentNode.removeChild(visualizer)
+
             }
-            function downloadFile() {
-                file = getMidiFromNoteSequence(globSingleSequence)
+            async function downloadFile() {
+                m = await core.sequenceProtoToMidi(globSingleSequence)
+                file = new Blob([m], { type: 'audio/midi' })
                 url = URL.createObjectURL(file);
                 const anchor = document.createElement('a');
                 anchor.href = url;
@@ -123,10 +147,16 @@
                 file = new Blob([seq], { type: 'audio/midi' })
                 return file
             }
+
+            function removeRequestMIDIButton(i) {
+                button = document.getElementById(`requestMIDI${i}`)
+                button.parentElement.removeChild(button)
+            }
             function dropRow(i) {
                 console.log("removing " + i)
                 dropVizualizer(i)
                 removeDeleteButton(i)
+                removeRequestMIDIButton(i)
                 removeNoteSequence(i)
                 restoreGlobSingleSequence()
                 updatePlayer()
@@ -135,14 +165,62 @@
                 globSequences.delete(key)
             }
             async function getRandom() {
+                let operationCodeContainer = document.getElementById('operationCodeContainer');
+                let pitch_tempContainer = document.getElementById('pitch_tempContainer')
+                let tempo_tempContainer = document.getElementById('tempo_tempContainer')
+                let n_wordsContainer = document.getElementById('n_wordsContainer')
+                operationCode = operationCodeContainer.value
+                pitch_temp = pitch_tempContainer.value
+                tempo_temp = tempo_tempContainer.value
+                n_words = n_wordsContainer.value
+                formData = new FormData();
+                formData.append('pitch_temp', Number(pitch_temp))
+                formData.append('tempo_temp', Number(tempo_temp))
+                formData.append('n_words', Number(n_words))
                 try {
                     response = await fetch('http://127.0.0.1:8080/musicbot/getAudio', {
-                        method: 'GET',
+                        method: 'POST',
+                        body: formData,
                         // headers: {
                         //     'Content-Type': 'multipart/form-data'
                         // }
                     });
 
+                    blob = await response.blob();
+                    newSequence = await core.blobToNoteSequence(blob)
+                    appendVizualizer(newSequence)
+                    addToGlobSingleSequence(newSequence)
+                    updatePlayer()
+                }
+                catch (error) {
+                    console.error('Upload error:', error);
+                }
+            }
+            async function requestMIDI(rowNumber) {
+                let operationCodeContainer = document.getElementById('operationCodeContainer');
+                let pitch_tempContainer = document.getElementById('pitch_tempContainer')
+                let tempo_tempContainer = document.getElementById('tempo_tempContainer')
+                let n_wordsContainer = document.getElementById('n_wordsContainer')
+                operationCode = operationCodeContainer.value
+                pitch_temp = pitch_tempContainer.value
+                tempo_temp = tempo_tempContainer.value
+                n_words = n_wordsContainer.value
+                midiFile = await getMidiFromNoteSequence(Number(rowNumber))
+                formData = new FormData();
+                formData.append('file', midiFile);
+                formData.append('operation_code', Number(operationCode))
+                formData.append('pitch_temp', Number(pitch_temp))
+                formData.append('tempo_temp', Number(tempo_temp))
+                formData.append('n_words', Number(n_words))
+                try {
+                    // Send an HTTP POST request to the server
+                    response = await fetch('http://127.0.0.1:8080/musicbot/test', {
+                        method: 'POST',
+                        body: formData,
+                        // headers: {
+                        //     'Content-Type': 'multipart/form-data'
+                        // }
+                    });
                     blob = await response.blob();
                     newSequence = await core.blobToNoteSequence(blob)
                     appendVizualizer(newSequence)
@@ -160,32 +238,8 @@
                 let midiButton = document.getElementById('loadMidiButton');
                 let operationCodeContainer = document.getElementById('operationCode');
                 let rowNumberContainer = document.getElementById('rowNumber')
-                midiButton.addEventListener('click', async () => {
-                    operationCode = operationCodeContainer.value
-                    rowNumber = rowNumberContainer.value
-                    midiFile = await getMidiFromNoteSequence(Number(rowNumber))
-                    formData = new FormData();
-                    formData.append('file', midiFile);
-                    formData.append('operationCode', operationCode)
-                    try {
-                        // Send an HTTP POST request to the server
-                        response = await fetch('http://127.0.0.1:8080/musicbot/test', {
-                            method: 'POST',
-                            body: formData,
-                            // headers: {
-                            //     'Content-Type': 'multipart/form-data'
-                            // }
-                        });
-                        blob = await response.blob();
-                        newSequence = await core.blobToNoteSequence(blob)
-                        appendVizualizer(newSequence)
-                        addToGlobSingleSequence(newSequence)
-                        updatePlayer()
-                    }
-                    catch (error) {
-                        console.error('Upload error:', error);
-                    }
-                });
+                let pitch_tempContainer = document.getElementById('pitch_tempContainer')
+                let tempo_tempContainer = document.getElementById('tempo_tempContainer')
                 // Add an event listener to the file input element
                 fileInput.addEventListener('change', () => {
                     // Get the selected file

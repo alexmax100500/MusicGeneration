@@ -30,14 +30,17 @@ config = multitask_config()
 learn = multitask_model_learner(data, config=config, pretrained_path=pretrained_path)
 
 
-def handle_uploaded_file(f):
+def handle_uploaded_file(f, pitch_temp, tempo_temp, n_words, operation_code):
     midi = f.read()
-    n_words = 120
-    temperatures = 1.0, 1.0
+    temperatures = pitch_temp, tempo_temp
     # full = s2s_predict_from_midi(learn, midi=midi, n_words=n_words, temperatures=temperatures, seed_len=8,
     #  pred_melody=True, use_memory=True, top_k=10, top_p=0.2).chords
     item = MusicItem.from_file(midi, vocab=vocab)
-    empty_item = MusicItem.empty(vocab, seq_type=SEQType.Chords)
+    if operation_code == 0:
+        seq_type= SEQType.Chords
+    else:
+        seq_type= SEQType.Melody
+    empty_item = MusicItem.empty(vocab, seq_type=seq_type)
     prediction = learn.predict_s2s(
         input_item=item,
         target_item=empty_item,
@@ -57,9 +60,15 @@ def test(request):
     print("POST::")
     print(request.POST)
     
+    pitch_temp = float(request.POST['pitch_temp'])
+    print(pitch_temp)
+    tempo_temp = float(request.POST['tempo_temp'])
+    print(tempo_temp)
+    n_words = int(request.POST['n_words'])
+    print(n_words)
     midi_file = request.FILES["file"]
-    # operation_code=request.POST['operation_code']
-    handle_uploaded_file(midi_file)
+    operation_code=int(request.POST['operation_code'])
+    handle_uploaded_file(midi_file, pitch_temp=pitch_temp, tempo_temp=tempo_temp, n_words=n_words, operation_code=operation_code)
     with open(data_path / "result.mid", "rb") as f:
         file_data = f.read()
     response = HttpResponse(file_data, content_type="audio/midi")
@@ -94,18 +103,19 @@ def getAccords(request):
 
 @api_view(["GET", "POST"])
 def getAudio(request):
+    pitch_temp = float(request.POST['pitch_temp'])
+    tempo_temp = float(request.POST['tempo_temp'])
+    n_words = int(request.POST['n_words'])
     file_location = "/home/cunning/testmusic.mid"
     empty_melody = MusicItem.empty(vocab)
     # predict_nw, full = learn.predict_nw(empty_melody, n_words = 100)
-    pitch_temp = 0.8  # randomness of melody
-    tempo_temp = 0.8  # randomness or rhythm
     top_k = 40
     predict_nw, full= learn.predict_nw(
         empty_melody,
         temperatures=(pitch_temp, tempo_temp),
         top_k=top_k,
         top_p=0.5,
-        n_words=200,
+        n_words=n_words,
     )   
     pathlib.Path(predict_nw.to_stream(bpm=120).write("midi", file_location))
     try:
